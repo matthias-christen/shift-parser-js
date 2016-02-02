@@ -119,6 +119,7 @@ export class Parser extends Tokenizer {
     this.module = false;
     this.moduleIsTheGoalSymbol = false;
     this.strict = false;
+    this.bareReturns = false;
 
     // Cover grammar
     this.isBindingElement = true;
@@ -725,7 +726,7 @@ export class Parser extends Tokenizer {
   }
 
   parseReturnStatement() {
-    if (!this.inFunctionBody) {
+    if (!this.inFunctionBody && !this.bareReturns) {
       throw this.createError(ErrorMessages.ILLEGAL_RETURN);
     }
 

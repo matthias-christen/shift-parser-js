@@ -18,6 +18,17 @@ exports.testParse = function testParse(program, accessor, expected) {
   });
 };
 
+exports.testParseBareReturns = function testParseBareReturns(program, accessor, expected) {
+  var args = arguments.length;
+  test(program, function () {
+    expect(args).to.be(testParseBareReturns.length);
+    var tree = parse(program, { loc: true, bareReturns: true });
+    schemaCheck(tree, SHIFT_SPEC.Script);
+    locationSanityCheck(tree);
+    expect(accessor(parse(program, { earlyErrors: false, bareReturns: true }))).to.eql(expected);
+  });
+};
+
 exports.testParseModule = function testParseModule(program, accessor, expected) {
   var args = arguments.length;
   test(program, function () {

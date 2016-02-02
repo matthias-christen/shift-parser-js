@@ -32,11 +32,12 @@ function markLocation(node, location) {
 }
 
 function generateInterface(parsingFunctionName) {
-  return function parse(code, {loc = false, earlyErrors = true} = {}) {
+  return function parse(code, {loc = false, earlyErrors = true, bareReturns = false} = {}) {
     let parser = new Parser(code);
     if (loc) {
       parser.markLocation = markLocation;
     }
+    parser.bareReturns = bareReturns;
     let ast = parser[parsingFunctionName]();
     if (earlyErrors) {
       let errors = EarlyErrorChecker.check(ast);
