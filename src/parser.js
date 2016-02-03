@@ -16,7 +16,7 @@
 
 import {ErrorMessages} from "./errors";
 
-import Tokenizer, { TokenClass, TokenType } from "./tokenizer";
+import Tokenizer, { TokenClass, TokenType, JsError } from "./tokenizer";
 
 // Empty parameter list for ArrowExpression
 const ARROW_EXPRESSION_PARAMS = "CoverParenthesizedExpressionAndArrowParameterList";
@@ -1128,7 +1128,11 @@ export class Parser extends Tokenizer {
     }
 
     // istanbul ignore next
-    throw new Error("Not reached");
+    let offset = 0, line = 1, column = 0;
+    if (node.loc != null) {
+      ({offset, line, column} = node.loc.start);
+    }
+    throw new JsError(offset, line, column, "Not reached (type=" + node.type + ")");
   }
 
   transformDestructuringWithDefault(node) {
@@ -1667,7 +1671,7 @@ export class Parser extends Tokenizer {
     let startLocation = this.getLocation();
     let group = this.inheritCoverGrammar(this.parseAssignmentExpressionOrBindingElement);
 
-    let params = this.isBindingElement ? [this.transformDestructuringWithDefault(group)] : null;
+    let params = this.isBindingElement && group.type !== 'CompoundAssignmentExpression' ? [this.transformDestructuringWithDefault(group)] : null;
 
     while (this.eat(TokenType.COMMA)) {
       this.isAssignmentTarget = false;
@@ -1687,7 +1691,7 @@ export class Parser extends Tokenizer {
       } else {
         // Can be either binding element or assignment target.
         let expr = this.inheritCoverGrammar(this.parseAssignmentExpressionOrBindingElement);
-        if (!this.isBindingElement) {
+        if (!this.isBindingElement || group.type === 'CompoundAssignmentExpression') {
           params = null;
         } else {
           params.push(this.transformDestructuringWithDefault(expr));

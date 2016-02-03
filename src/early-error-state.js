@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {} from "es6-map/implement";
+//import {} from "es6-map/implement";
 import MultiMap from "multimap";
 
 // FIXME: remove this when collections/multi-map is working
