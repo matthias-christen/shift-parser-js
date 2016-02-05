@@ -1691,7 +1691,7 @@ export class Parser extends Tokenizer {
       } else {
         // Can be either binding element or assignment target.
         let expr = this.inheritCoverGrammar(this.parseAssignmentExpressionOrBindingElement);
-        if (!this.isBindingElement || group.type === 'CompoundAssignmentExpression') {
+        if (!this.isBindingElement || group.type === 'CompoundAssignmentExpression' || expr.type === 'CompoundAssignmentExpression') {
           params = null;
         } else {
           params.push(this.transformDestructuringWithDefault(expr));
