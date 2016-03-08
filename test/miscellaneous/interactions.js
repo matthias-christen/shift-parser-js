@@ -571,9 +571,9 @@ suite("Parser", function () {
           }
         ]
       }
-    )
+    );
 
-    testParse("class A extends B { a() { ({b: super[c]}) = d } }", stmt,
+    testParse("class A extends B { a() { ({b: super[c]} = d) } }", stmt,
       { type: "ClassDeclaration",
         name: { type: "BindingIdentifier", name: "A" },
         super: { type: "IdentifierExpression", name: "B" },
@@ -614,7 +614,42 @@ suite("Parser", function () {
           }
         ]
       }
-    )
+    );
 
+    // Consise arrow bodies may contain yield as an identifier even in generators.
+    testParse("function* f(){ () => yield; }", stmt,
+      { type: "FunctionDeclaration",
+        isGenerator: true,
+        name: {type: "BindingIdentifier", name: "f"},
+        params: { type: "FormalParameters", items: [], rest: null },
+        body: {
+          type: "FunctionBody",
+          directives: [],
+          statements: [{
+            type: "ExpressionStatement",
+            expression: {
+              type: "ArrowExpression",
+              params: { type: "FormalParameters", items: [], rest: null },
+              body: {type: "IdentifierExpression", name: "yield"}
+            }
+          }]
+        }
+      }
+    );
+
+    // CompoundAssignmentExpressions are not valid binding targets
+    testParse("null && (x += null)", expr,
+      { type: "BinaryExpression",
+        operator: "&&",
+        left: { type: "LiteralNullExpression" },
+        right: {
+          type: "CompoundAssignmentExpression",
+          operator: "+=",
+          binding: { type: "BindingIdentifier", name: "x" },
+          expression: { type: "LiteralNullExpression" } } }
+    );
+
+    testParseFailure("({a: b += 0} = {})", "Invalid left-hand side in assignment");
+    testParseFailure("[a += b] = []", "Invalid left-hand side in assignment");
   });
 });

@@ -80,6 +80,7 @@ function copyLocation(from, to) {
 }
 
 function isValidSimpleAssignmentTarget(node) {
+  if (node == null) return false;
   switch (node.type) {
     case "IdentifierExpression":
     case "ComputedMemberExpression":
@@ -163,8 +164,8 @@ export class Parser extends Tokenizer {
   }
 
   consumeSemicolon() {
-    if (this.hasLineTerminatorBeforeNext) return;
     if (this.eat(TokenType.SEMICOLON)) return;
+    if (this.hasLineTerminatorBeforeNext) return;
     if (!this.eof() && !this.match(TokenType.RBRACE)) {
       throw this.createUnexpected(this.lookahead);
     }
@@ -290,7 +291,6 @@ export class Parser extends Tokenizer {
   parseFromClause() {
     this.expectContextualKeyword("from");
     let value = this.expect(TokenType.STRING).str;
-    this.consumeSemicolon();
     return value;
   }
 
@@ -307,24 +307,30 @@ export class Parser extends Tokenizer {
       case TokenType.LET:
         defaultBinding = this.parseBindingIdentifier();
         if (!this.eat(TokenType.COMMA)) {
-          return this.markLocation({ type: "Import", defaultBinding, namedImports: [], moduleSpecifier: this.parseFromClause() }, startLocation);
+          let decl = { type: "Import", defaultBinding, namedImports: [], moduleSpecifier: this.parseFromClause() };
+          this.consumeSemicolon()
+          return this.markLocation(decl, startLocation);
         }
         break;
     }
     if (this.match(TokenType.MUL)) {
-      return this.markLocation({
+      let decl = {
         type: "ImportNamespace",
         defaultBinding,
         namespaceBinding: this.parseNameSpaceBinding(),
         moduleSpecifier: this.parseFromClause(),
-      }, startLocation);
+      };
+      this.consumeSemicolon()
+      return this.markLocation(decl, startLocation);
     } else if (this.match(TokenType.LBRACE)) {
-      return this.markLocation({
+      let decl = {
         type: "Import",
         defaultBinding,
         namedImports: this.parseNamedImports(),
         moduleSpecifier: this.parseFromClause(),
-      }, startLocation);
+      };
+      this.consumeSemicolon()
+      return this.markLocation(decl, startLocation);
     } else {
       throw this.createUnexpected(this.lookahead);
     }
@@ -361,6 +367,7 @@ export class Parser extends Tokenizer {
         this.lex();
         // export * FromClause ;
         decl = { type: "ExportAllFrom", moduleSpecifier: this.parseFromClause() };
+        this.consumeSemicolon();
         break;
       case TokenType.LBRACE:
         // export ExportClause FromClause ;
@@ -371,6 +378,7 @@ export class Parser extends Tokenizer {
           moduleSpecifier = this.parseFromClause();
         }
         decl = { type: "ExportFrom", namedExports, moduleSpecifier };
+        this.consumeSemicolon();
         break;
       case TokenType.CLASS:
         // export ClassDeclaration
@@ -662,7 +670,10 @@ export class Parser extends Tokenizer {
         let expr = this.inheritCoverGrammar(this.parseAssignmentExpressionOrBindingElement);
         this.allowIn = previousAllowIn;
 
-        if (this.isAssignmentTarget && expr.type !== "AssignmentExpression" && (this.match(TokenType.IN) || this.matchContextualKeyword("of"))) {
+        if ((isValidSimpleAssignmentTarget(expr) || this.isAssignmentTarget) && expr.type !== "AssignmentExpression" && (this.match(TokenType.IN) || this.matchContextualKeyword("of"))) { // the first condition is an `or` because groups are not assignment targets, but `for((a) in 0);` is a program
+          if (expr.type === "ObjectExpression" || expr.type === "ArrayExpression") {
+            this.firstExprError = null;
+          }
           if (startsWithLet && this.matchContextualKeyword("of")) {
             throw this.createError(ErrorMessages.INVALID_LHS_IN_FOR_OF);
           }
@@ -732,15 +743,14 @@ export class Parser extends Tokenizer {
 
     this.lex();
 
-    if (this.hasLineTerminatorBeforeNext) {
+    // Catch the very common case first: immediately a semicolon (U+003B).
+    if (this.eat(TokenType.SEMICOLON) || this.hasLineTerminatorBeforeNext) {
       return { type: "ReturnStatement", expression: null };
     }
 
     let expression = null;
-    if (!this.match(TokenType.SEMICOLON)) {
-      if (!this.match(TokenType.RBRACE) && !this.eof()) {
-        expression = this.parseExpression();
-      }
+    if (!this.match(TokenType.RBRACE) && !this.eof()) {
+      expression = this.parseExpression();
     }
 
     this.consumeSemicolon();
@@ -995,16 +1005,11 @@ export class Parser extends Tokenizer {
 
     let arrow = this.expect(TokenType.ARROW);
 
-    if (this.match(TokenType.LBRACE)) {
-      let previousYield = this.allowYieldExpression;
-      this.allowYieldExpression = false;
-      let body = this.parseFunctionBody();
-      this.allowYieldExpression = previousYield;
-      return this.markLocation({ type: "ArrowExpression", params: paramsNode, body }, startLocation);
-    } else {
-      let body = this.parseAssignmentExpression();
-      return this.markLocation({ type: "ArrowExpression", params: paramsNode, body }, startLocation);
-    }
+    let previousYield = this.allowYieldExpression;
+    this.allowYieldExpression = false;
+    let body = this.match(TokenType.LBRACE) ? this.parseFunctionBody() : this.parseAssignmentExpression();
+    this.allowYieldExpression = previousYield;
+    return this.markLocation({ type: "ArrowExpression", params: paramsNode, body }, startLocation);
   }
 
   parseAssignmentExpression() {
@@ -1050,7 +1055,7 @@ export class Parser extends Tokenizer {
       }
       expr = this.transformDestructuring(expr);
     } else if (operator.type === TokenType.ASSIGN) {
-      if (!this.isAssignmentTarget) {
+      if (!isValidSimpleAssignmentTarget(expr) && !this.isAssignmentTarget) { // the first condition is present because groups do not have isAssignmentTarget set, but `(a)=1` is a program.
         throw this.createError(ErrorMessages.INVALID_LHS_IN_ASSIGNMENT);
       }
       expr = this.transformDestructuring(expr);
@@ -1062,12 +1067,15 @@ export class Parser extends Tokenizer {
     let rhs = this.parseAssignmentExpression();
 
     this.firstExprError = null;
-    return this.markLocation(
-      operator.type === TokenType.ASSIGN
-        ? { type: "AssignmentExpression", binding: expr, expression: rhs }
-        : { type: "CompoundAssignmentExpression", binding: expr, operator: operator.type.name, expression: rhs }
-    , startLocation
-    );
+    let node;
+    if (operator.type === TokenType.ASSIGN) {
+      node = { type: "AssignmentExpression", binding: expr, expression: rhs };
+    }
+    else {
+      node = { type: "CompoundAssignmentExpression", binding: expr, operator: operator.type.name, expression: rhs };
+      this.isBindingElement = this.isAssignmentTarget = false;
+    }
+    return this.markLocation(node, startLocation);
   }
 
   transformDestructuring(node) {
@@ -1671,7 +1679,7 @@ export class Parser extends Tokenizer {
     let startLocation = this.getLocation();
     let group = this.inheritCoverGrammar(this.parseAssignmentExpressionOrBindingElement);
 
-    let params = this.isBindingElement && group.type !== 'CompoundAssignmentExpression' ? [this.transformDestructuringWithDefault(group)] : null;
+    let params = this.isBindingElement ? [this.transformDestructuringWithDefault(group)] : null;
 
     while (this.eat(TokenType.COMMA)) {
       this.isAssignmentTarget = false;
@@ -1691,7 +1699,7 @@ export class Parser extends Tokenizer {
       } else {
         // Can be either binding element or assignment target.
         let expr = this.inheritCoverGrammar(this.parseAssignmentExpressionOrBindingElement);
-        if (!this.isBindingElement || group.type === 'CompoundAssignmentExpression' || expr.type === 'CompoundAssignmentExpression') {
+        if (!this.isBindingElement) {
           params = null;
         } else {
           params.push(this.transformDestructuringWithDefault(expr));
@@ -1724,7 +1732,7 @@ export class Parser extends Tokenizer {
       if (rest) {
         this.ensureArrow();
       }
-      this.isBindingElement = false;
+      this.isBindingElement = this.isAssignmentTarget = false;
       return group;
     }
   }
