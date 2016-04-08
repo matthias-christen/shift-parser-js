@@ -196,6 +196,10 @@ suite("Parser", function () {
     testParseFailure("function* f() { [yield {a = 0}]; }", "Illegal property initializer");
     testParseFailure("function* f() { [yield* {a = 0}]; }", "Illegal property initializer");
     testParseFailure("1 / %", "Unexpected token \"%\"");
-
+    testParseFailure("\\u{}", "Unexpected \"}\"");
+    testParseFailure("\"\\u{}\"", "Unexpected \"}\"");
+    testParseFailure("(\"\\u{}\")", "Unexpected \"}\"");
+    testParseFailure("\"use strict\"; function f(){(\"\\1\");}", "Unexpected legacy octal escape sequence: \\1");
+    testParseFailure("\"use strict\"; function f(){01;}", "Unexpected legacy octal integer literal");
   });
 });
