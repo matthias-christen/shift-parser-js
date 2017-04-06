@@ -107,8 +107,9 @@ class ParserWithLocation extends GenericParser {
 }
 
 function generateInterface(parsingFunctionName) {
-  return function parse(code, { earlyErrors = true } = {}) {
+  return function parse(code, { earlyErrors = true, bareReturns = false } = {}) {
     let parser = new GenericParser(code);
+    parser.bareReturns = bareReturns;
     let tree = parser[parsingFunctionName]();
     if (earlyErrors) {
       let errors = EarlyErrorChecker.check(tree);
@@ -122,8 +123,9 @@ function generateInterface(parsingFunctionName) {
 }
 
 function generateInterfaceWithLocation(parsingFunctionName) {
-  return function parse(code, { earlyErrors = true } = {}) {
+  return function parse(code, { earlyErrors = true, bareReturns = false } = {}) {
     let parser = new ParserWithLocation(code);
+    parser.bareReturns = bareReturns;
     let tree = parser[parsingFunctionName]();
     if (earlyErrors) {
       let errors = EarlyErrorChecker.check(tree);
