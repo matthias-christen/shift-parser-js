@@ -15,7 +15,9 @@
  */
 
 let testParse = require('../assertions').testParse;
+let testParseBareReturns = require('../assertions').testParseBareReturns;
 let testParseFailure = require('../assertions').testParseFailure;
+let stmt = require('../helpers').stmt;
 let expr = require('../helpers').expr;
 
 suite('Parser', function () {
@@ -88,6 +90,12 @@ suite('Parser', function () {
     testParseFailure('return;', 'Illegal return statement');
     testParseFailure('{ return; }', 'Illegal return statement');
     testParseFailure('if (false) { return; }', 'Illegal return statement');
+
+    testParseBareReturns('return 42;', stmt,
+      { type: 'ReturnStatement',
+        expression: { type: 'LiteralNumericExpression', value: 42 }
+      }
+    );
 
   });
 });
