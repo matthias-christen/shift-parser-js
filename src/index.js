@@ -16,7 +16,8 @@
 
 import { GenericParser } from './parser';
 import { JsError } from './tokenizer';
-import { EarlyErrorChecker } from './early-errors';
+
+//import { EarlyErrorChecker } from './early-errors';
 
 class ParserWithLocation extends GenericParser {
   constructor(source) {
@@ -47,6 +48,8 @@ function generateInterface(parsingFunctionName) {
     let parser = new GenericParser(code);
     parser.bareReturns = bareReturns;
     let tree = parser[parsingFunctionName]();
+
+    /*
     if (earlyErrors) {
       let errors = EarlyErrorChecker.check(tree);
       // for now, just throw the first error; we will handle multiple errors later
@@ -54,7 +57,8 @@ function generateInterface(parsingFunctionName) {
         let { node, message } = errors[0];
         throw new JsError(0, 1, 0, message);
       }
-    }
+    }*/
+
     return tree;
   };
 }
@@ -64,6 +68,8 @@ function generateInterfaceWithLocation(parsingFunctionName) {
     let parser = new ParserWithLocation(code);
     parser.bareReturns = bareReturns;
     let tree = parser[parsingFunctionName]();
+
+    /*
     if (earlyErrors) {
       let errors = EarlyErrorChecker.check(tree);
       // for now, just throw the first error; we will handle multiple errors later
@@ -72,7 +78,8 @@ function generateInterfaceWithLocation(parsingFunctionName) {
         let { offset, line, column } = parser.locations.get(node).start;
         throw new JsError(offset, line, column, message);
       }
-    }
+    }*/
+
     return { tree, locations: parser.locations };
   };
 }
@@ -82,5 +89,5 @@ export const parseScript = generateInterface('parseScript');
 export const parseModuleWithLocation = generateInterfaceWithLocation('parseModule');
 export const parseScriptWithLocation = generateInterfaceWithLocation('parseScript');
 export default parseScript;
-export { EarlyErrorChecker, GenericParser, ParserWithLocation };
+export { /*EarlyErrorChecker,*/ GenericParser, ParserWithLocation };
 export { default as Tokenizer, TokenClass, TokenType } from './tokenizer';
