@@ -109,8 +109,8 @@ export class EarlyErrorChecker extends MonoidalReducer {
         body = body.enforceStrictErrors();
       }
     }
-    params.yieldExpressions.forEach(function (node) {
-      params = params.addError(new EarlyError(node, 'Arrow parameters must not contain yield expressions'));
+    params.yieldExpressions.forEach(n => {
+      params = params.addError(new EarlyError(n, 'Arrow parameters must not contain yield expressions'));
     });
     let s = super.reduceArrowExpression(node, { params, body });
     if (!isSimpleParameterList && node.body.type === 'FunctionBody' && isStrictFunctionBody(node.body)) {
@@ -182,8 +182,6 @@ export class EarlyErrorChecker extends MonoidalReducer {
       s = this.append(s, _super);
       sElements = sElements.clearSuperCallExpressionsInConstructorMethod();
     }
-    sElements = sElements.enforceSuperCallExpressions(SUPERCALL_ERROR);
-    sElements = sElements.enforceSuperPropertyExpressions(SUPERPROPERTY_ERROR);
     s = this.append(s, sElements);
     s = enforceDuplicateConstructorMethods(node, s);
     s = s.observeLexicalDeclaration();
@@ -210,8 +208,6 @@ export class EarlyErrorChecker extends MonoidalReducer {
       s = this.append(s, _super);
       sElements = sElements.clearSuperCallExpressionsInConstructorMethod();
     }
-    sElements = sElements.enforceSuperCallExpressions(SUPERCALL_ERROR);
-    sElements = sElements.enforceSuperPropertyExpressions(SUPERPROPERTY_ERROR);
     s = this.append(s, sElements);
     s = enforceDuplicateConstructorMethods(node, s);
     s = s.clearBoundNames();
@@ -255,7 +251,7 @@ export class EarlyErrorChecker extends MonoidalReducer {
     return s;
   }
 
-  reduceExportFrom(node) {
+  reduceExportFrom() {
     let s = super.reduceExportFrom(...arguments);
     s = s.clearExportedBindings();
     return s;
@@ -356,7 +352,7 @@ export class EarlyErrorChecker extends MonoidalReducer {
   reduceFunctionDeclaration(node, { name, params, body }) {
     let isSimpleParameterList = node.params.rest == null && node.params.items.every(i => i.type === 'BindingIdentifier');
     let addError = !isSimpleParameterList || node.isGenerator ? 'addError' : 'addStrictError';
-    params.lexicallyDeclaredNames.forEachEntry((nodes/* , bindingName*/) => {
+    params.lexicallyDeclaredNames.forEachEntry(nodes => {
       if (nodes.length > 1) {
         nodes.slice(1).forEach(dupeNode => {
           params = params[addError](DUPLICATE_BINDING(dupeNode));
@@ -369,8 +365,8 @@ export class EarlyErrorChecker extends MonoidalReducer {
     params = params.enforceSuperCallExpressions(SUPERCALL_ERROR);
     params = params.enforceSuperPropertyExpressions(SUPERPROPERTY_ERROR);
     if (node.isGenerator) {
-      params.yieldExpressions.forEach(function (node) {
-        params = params.addError(new EarlyError(node, 'Generator parameters must not contain yield expressions'));
+      params.yieldExpressions.forEach(n => {
+        params = params.addError(new EarlyError(n, 'Generator parameters must not contain yield expressions'));
       });
     }
     params = params.clearNewTargetExpressions();
@@ -404,8 +400,8 @@ export class EarlyErrorChecker extends MonoidalReducer {
     params = params.enforceSuperCallExpressions(SUPERCALL_ERROR);
     params = params.enforceSuperPropertyExpressions(SUPERPROPERTY_ERROR);
     if (node.isGenerator) {
-      params.yieldExpressions.forEach(function (node) {
-        params = params.addError(new EarlyError(node, 'Generator parameters must not contain yield expressions'));
+      params.yieldExpressions.forEach(n => {
+        params = params.addError(new EarlyError(n, 'Generator parameters must not contain yield expressions'));
       });
     }
     params = params.clearNewTargetExpressions();
@@ -491,7 +487,7 @@ export class EarlyErrorChecker extends MonoidalReducer {
     return s;
   }
 
-  reduceLiteralRegExpExpression(node) {
+  reduceLiteralRegExpExpression() {
     let s = this.identity;
     // NOTE: the RegExp pattern acceptor is disabled until we have more confidence in its correctness (more tests)
     // if (!PatternAcceptor.test(node.pattern, node.flags.indexOf("u") >= 0)) {
@@ -512,8 +508,8 @@ export class EarlyErrorChecker extends MonoidalReducer {
       params = params.enforceSuperCallExpressions(SUPERCALL_ERROR);
     }
     if (node.isGenerator) {
-      params.yieldExpressions.forEach(function (node) {
-        params = params.addError(new EarlyError(node, 'Generator parameters must not contain yield expressions'));
+      params.yieldExpressions.forEach(n => {
+        params = params.addError(new EarlyError(n, 'Generator parameters must not contain yield expressions'));
       });
     }
     body = body.clearSuperPropertyExpressions();
@@ -579,7 +575,7 @@ export class EarlyErrorChecker extends MonoidalReducer {
     return s;
   }
 
-  reduceUpdateExpression(node) {
+  reduceUpdateExpression() {
     let s = super.reduceUpdateExpression(...arguments);
     s = s.clearBoundNames();
     return s;
@@ -597,8 +593,8 @@ export class EarlyErrorChecker extends MonoidalReducer {
     let s = super.reduceScript(...arguments);
     s = s.enforceDuplicateLexicallyDeclaredNames(DUPLICATE_BINDING);
     s = s.enforceConflictingLexicallyDeclaredNames(s.varDeclaredNames, DUPLICATE_BINDING);
-    s.newTargetExpressions.forEach(node => {
-      s = s.addError(new EarlyError(node, 'new.target must be within function (but not arrow expression) code'));
+    s.newTargetExpressions.forEach(n => {
+      s = s.addError(new EarlyError(n, 'new.target must be within function (but not arrow expression) code'));
     });
     s = s.enforceFreeContinueStatementErrors(FREE_CONTINUE);
     s = s.enforceFreeLabeledContinueStatementErrors(UNBOUND_CONTINUE);

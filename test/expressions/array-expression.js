@@ -17,8 +17,8 @@
 let testParse = require('../assertions').testParse;
 let expr = require('../helpers').expr;
 
-suite('Parser', function () {
-  suite('array expression', function () {
+suite('Parser', () => {
+  suite('array expression', () => {
 
     testParse('[]', expr, { type: 'ArrayExpression', elements: [] });
 
@@ -30,47 +30,59 @@ suite('Parser', function () {
 
     testParse('[ ,, 0 ]', expr, {
       type: 'ArrayExpression',
-      elements: [null, null, { type: 'LiteralNumericExpression', value: 0 }]
+      elements: [null, null, { type: 'LiteralNumericExpression', value: 0 }],
     });
 
     testParse('[ 1, 2, 3, ]', expr, {
       type: 'ArrayExpression',
       elements: [{ type: 'LiteralNumericExpression', value: 1 }, {
         type: 'LiteralNumericExpression',
-        value: 2
-      }, { type: 'LiteralNumericExpression', value: 3 }]
+        value: 2,
+      }, { type: 'LiteralNumericExpression', value: 3 }],
     });
 
     testParse('[ 1, 2,, 3, ]', expr, {
       type: 'ArrayExpression',
       elements: [{ type: 'LiteralNumericExpression', value: 1 }, {
         type: 'LiteralNumericExpression',
-        value: 2
-      }, null, { type: 'LiteralNumericExpression', value: 3 }]
+        value: 2,
+      }, null, { type: 'LiteralNumericExpression', value: 3 }],
     });
 
     testParse('[,,1,,,2,3,,]', expr, {
       type: 'ArrayExpression',
       elements: [null, null, {
         type: 'LiteralNumericExpression',
-        value: 1
+        value: 1,
       }, null, null, { type: 'LiteralNumericExpression', value: 2 }, {
         type: 'LiteralNumericExpression',
-        value: 3
-      }, null]
+        value: 3,
+      }, null],
     });
 
   });
 
-  testParse('[a, ...(b=c)]', expr, {
+  testParse('[a, ...b=c]', expr, {
     type: 'ArrayExpression',
     elements: [{ type: 'IdentifierExpression', name: 'a' }, {
       type: 'SpreadElement',
       expression: {
         type: 'AssignmentExpression',
         binding: { type: 'AssignmentTargetIdentifier', name: 'b' },
-        expression: { type: 'IdentifierExpression', name: 'c' }
-      }
-    }]
+        expression: { type: 'IdentifierExpression', name: 'c' },
+      },
+    }],
+  });
+
+  testParse('([a, ...b=c])', expr, {
+    type: 'ArrayExpression',
+    elements: [{ type: 'IdentifierExpression', name: 'a' }, {
+      type: 'SpreadElement',
+      expression: {
+        type: 'AssignmentExpression',
+        binding: { type: 'AssignmentTargetIdentifier', name: 'b' },
+        expression: { type: 'IdentifierExpression', name: 'c' },
+      },
+    }],
   });
 });

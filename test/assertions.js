@@ -9,9 +9,9 @@ let EarlyErrorChecker = require('../dist/early-errors').EarlyErrorChecker;
 
 exports.testParse = function testParse(program, accessor, expected) {
   let args = arguments.length;
-  test(program, function () {
+  test(program, () => {
     expect(args).to.be(testParse.length);
-    let {tree, locations} = parse(program)
+    let { tree, locations } = parse(program);
     schemaCheck(tree, SHIFT_SPEC.Script);
     locationSanityCheck(tree, locations);
     expect(accessor(parse(program, { earlyErrors: false }).tree)).to.eql(expected);
@@ -31,18 +31,28 @@ exports.testParseBareReturns = function testParseBareReturns(program, accessor, 
 
 exports.testParseModule = function testParseModule(program, accessor, expected) {
   let args = arguments.length;
-  test(program, function () {
+  test(program, () => {
     expect(args).to.be(testParseModule.length);
-    let {tree, locations} = parseModule(program)
+    let { tree, locations } = parseModule(program);
     schemaCheck(tree, SHIFT_SPEC.Module);
     locationSanityCheck(tree, locations);
     expect(accessor(parseModule(program, { earlyErrors: false }).tree)).to.eql(expected);
   });
 };
 
+exports.testParseSuccess = function testParseSuccess(program) {
+  let args = arguments.length;
+  test(program, () => {
+    expect(args).to.be(testParseSuccess.length);
+    let { tree, locations } = parse(program);
+    schemaCheck(tree, SHIFT_SPEC.Script);
+    locationSanityCheck(tree, locations);
+  });
+};
+
 exports.testParseFailure = function testParseFailure(source, message) {
   let args = arguments.length;
-  test('Expect failure in Script: ' + source, function () {
+  test('Expect failure in Script: ' + source, () => {
     expect(args).to.be(testParseFailure.length);
     try {
       parse(source, { earlyErrors: false });
@@ -57,7 +67,7 @@ exports.testParseFailure = function testParseFailure(source, message) {
 
 exports.testParseModuleFailure = function testParseModuleFailure(source, message) {
   let args = arguments.length;
-  test('Expect failure in Module: ' + source, function () {
+  test('Expect failure in Module: ' + source, () => {
     expect(args).to.be(testParseModuleFailure.length);
     try {
       parseModule(source, { earlyErrors: false });
@@ -71,7 +81,7 @@ exports.testParseModuleFailure = function testParseModuleFailure(source, message
 
 exports.testEarlyError = function testParseFailure(source, message) {
   let args = arguments.length;
-  test('Expect failure in Script: ' + source, function () {
+  test('Expect failure in Script: ' + source, () => {
     expect(args).to.be(testParseFailure.length);
     let parser = new Parser(source);
     let ast = parser.parseScript();
@@ -84,7 +94,7 @@ exports.testEarlyError = function testParseFailure(source, message) {
 
 exports.testModuleEarlyError = function testParseFailure(source, message) {
   let args = arguments.length;
-  test('Expect failure in Script: ' + source, function () {
+  test('Expect failure in Script: ' + source, () => {
     expect(args).to.be(testParseFailure.length);
     let parser = new Parser(source);
     let ast = parser.parseModule();

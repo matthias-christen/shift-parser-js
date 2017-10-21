@@ -17,13 +17,13 @@
 let expect = require('expect.js');
 let ShiftParser = require('../../');
 
-suite('API', function () {
-  test('should exist', function () {
+suite('API', () => {
+  test('should exist', () => {
     expect(ShiftParser.default).to.be.a('function');
     expect(ShiftParser.default('')).to.be.an('object');
   });
 
-  test('early error checker exists', function () {
+  test('early error checker exists', () => {
     expect(ShiftParser.EarlyErrorChecker).to.be.ok();
     expect(ShiftParser.EarlyErrorChecker.check).to.be.a('function');
   });
@@ -31,11 +31,11 @@ suite('API', function () {
   function span(si, sl, sc, ei, el, ec) {
     return {
       start: { line: sl, column: sc, offset: si },
-      end: { line: el, column: ec, offset: ei }
+      end: { line: el, column: ec, offset: ei },
     };
   }
 
-  test('script for location information', function () {
+  test('script for location information', () => {
     let rv = ShiftParser.parseScriptWithLocation('0', { earlyErrors: true });
     expect(rv.tree).to.eql(
       {
@@ -43,8 +43,8 @@ suite('API', function () {
         directives: [],
         statements: [{
           type: 'ExpressionStatement',
-          expression: { type: 'LiteralNumericExpression', value: 0 }
-        }]
+          expression: { type: 'LiteralNumericExpression', value: 0 },
+        }],
       }
     );
 
@@ -53,7 +53,7 @@ suite('API', function () {
     expect(rv.locations.get(rv.tree.statements[0].expression)).to.eql(span(0, 1, 0, 1, 1, 1));
   });
 
-  test('module for location information', function () {
+  test('module for location information', () => {
     let rv = ShiftParser.parseModuleWithLocation('0', { earlyErrors: true });
     expect(rv.tree).to.eql(
       {
@@ -61,14 +61,71 @@ suite('API', function () {
         directives: [],
         items: [{
           type: 'ExpressionStatement',
-          expression: { type: 'LiteralNumericExpression', value: 0 }
-        }]
+          expression: { type: 'LiteralNumericExpression', value: 0 },
+        }],
       }
     );
 
     expect(rv.locations.get(rv.tree)).to.eql(span(0, 1, 0, 1, 1, 1));
     expect(rv.locations.get(rv.tree.items[0])).to.eql(span(0, 1, 0, 1, 1, 1));
     expect(rv.locations.get(rv.tree.items[0].expression)).to.eql(span(0, 1, 0, 1, 1, 1));
+  });
+
+  test('script for comment locations', () => {
+    let source = `
+      // a comment
+      '//not a comment';
+      --> a comment
+      a + /* a comment
+      */ <!-- a comment
+      \`/*not a comment*/ \${ 0/* a template comment */ } \`
+      // a comment`; // That this does not have a trailing linebreak is important.
+    let rv = ShiftParser.parseScriptWithLocation(source);
+
+    const commentStrings = [];
+    for (let i = 0; i < rv.comments.length; ++i) {
+      const { start, end } = rv.comments[i];
+      commentStrings.push(source.substring(start.offset, end.offset));
+    }
+    expect(commentStrings).to.eql([
+      '// a comment\n',
+      '--> a comment\n',
+      '/* a comment\n      */',
+      '<!-- a comment\n',
+      '/* a template comment */',
+      '// a comment',
+    ]);
+
+    expect(rv.comments.map(({ type, text }) => ({ type, text }))).to.eql([
+      { type: 'SingleLine', text: ' a comment' },
+      { type: 'HTMLClose', text: ' a comment' },
+      { type: 'MultiLine', text: ' a comment\n      ' },
+      { type: 'HTMLOpen', text: ' a comment' },
+      { type: 'MultiLine', text: ' a template comment ' },
+      { type: 'SingleLine', text: ' a comment' },
+    ]);
+  });
+
+  test('module for comment locations', () => {
+    let source = `
+      // a comment
+      '// not a comment';
+      a <!-- b
+      `; // Note that '<!-- b' is *not* a comment.
+    let rv = ShiftParser.parseModuleWithLocation(source);
+
+    const commentStrings = [];
+    for (let i = 0; i < rv.comments.length; ++i) {
+      const { start, end } = rv.comments[i];
+      commentStrings.push(source.substring(start.offset, end.offset));
+    }
+    expect(commentStrings).to.eql([
+      '// a comment\n',
+    ]);
+
+    expect(rv.comments.map(({ type, text }) => ({ type, text }))).to.eql([
+      { type: 'SingleLine', text: ' a comment' },
+    ]);
   });
 
   function parseModule(name) {
@@ -85,12 +142,12 @@ suite('API', function () {
     expect.eql(tree, tree2);
   }
 
-  test('location sanity test', function () {
+  test('location sanity test', () => {
     parseModule('everything.js/es2015-module');
     parseScript('everything.js/es2015-script');
   });
 
-  test('self parsing', function () {
+  test('self parsing', () => {
     parseScript(__filename);
     parseModule('../../src/utils');
     parseModule('../../src/errors');

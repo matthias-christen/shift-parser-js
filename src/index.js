@@ -16,13 +16,14 @@
 
 import { GenericParser } from './parser';
 import { JsError } from './tokenizer';
-
 //import { EarlyErrorChecker } from './early-errors';
+import { isLineTerminator } from './utils';
 
 class ParserWithLocation extends GenericParser {
   constructor(source) {
     super(source);
     this.locations = new WeakMap;
+    this.comments = [];
   }
 
   startNode() {
@@ -30,9 +31,28 @@ class ParserWithLocation extends GenericParser {
   }
 
   finishNode(node, start) {
+    if (node.type === 'Script' || node.type === 'Module') {
+      this.locations.set(node, {
+        start: { line: 1, column: 0, offset: 0 },
+        end: this.getLocation(),
+      });
+      return node;
+    }
+    if (node.type === 'TemplateExpression') {
+      // Adjust TemplateElements to not include surrounding backticks or braces
+      for (let i = 0; i < node.elements.length; i += 2) {
+        const endAdjustment = i < node.elements.length - 1 ? 2 : 1; // discard '${' or '`' respectively
+        const element = node.elements[i];
+        const location = this.locations.get(element);
+        this.locations.set(element, {
+          start: { line: location.start.line, column: location.start.column + 1, offset: location.start.offset + 1 }, // discard '}' or '`'
+          end: { line: location.end.line, column: location.end.column - endAdjustment, offset: location.end.offset - endAdjustment },
+        });
+      }
+    }
     this.locations.set(node, {
       start,
-      end: this.getLocation()
+      end: this.getLastTokenEndLocation(),
     });
     return node;
   }
@@ -40,6 +60,49 @@ class ParserWithLocation extends GenericParser {
   copyNode(src, dest) {
     this.locations.set(dest, this.locations.get(src)); // todo check undefined
     return dest;
+  }
+
+  skipSingleLineComment(offset) {
+    // We're actually extending the *tokenizer*, here.
+    const start = {
+      line: this.line + 1,
+      column: this.index - this.lineStart,
+      offset: this.index,
+    };
+    const c = this.source[this.index];
+    const type = c === '/' ? 'SingleLine' : c === '<' ? 'HTMLOpen' : 'HTMLClose';
+
+    super.skipSingleLineComment(offset);
+
+    const end = {
+      line: this.line + 1,
+      column: this.index - this.lineStart,
+      offset: this.index,
+    };
+    const trailingLineTerminatorCharacters = this.source[this.index - 2] === '\r' ? 2 : isLineTerminator(this.source.charCodeAt(this.index - 1)) ? 1 : 0;
+    const text = this.source.substring(start.offset + offset, end.offset - trailingLineTerminatorCharacters);
+
+    this.comments.push({ text, type, start, end });
+  }
+
+  skipMultiLineComment() {
+    const start = {
+      line: this.line + 1,
+      column: this.index - this.lineStart,
+      offset: this.index,
+    };
+    const type = 'MultiLine';
+
+    super.skipMultiLineComment();
+
+    const end = {
+      line: this.line + 1,
+      column: this.index - this.lineStart,
+      offset: this.index,
+    };
+    const text = this.source.substring(start.offset + 2, end.offset - 2);
+
+    this.comments.push({ text, type, start, end });
   }
 }
 
@@ -54,8 +117,7 @@ function generateInterface(parsingFunctionName) {
       let errors = EarlyErrorChecker.check(tree);
       // for now, just throw the first error; we will handle multiple errors later
       if (errors.length > 0) {
-        let { node, message } = errors[0];
-        throw new JsError(0, 1, 0, message);
+        throw new JsError(0, 1, 0, errors[0].message);
       }
     }*/
 
@@ -80,7 +142,7 @@ function generateInterfaceWithLocation(parsingFunctionName) {
       }
     }*/
 
-    return { tree, locations: parser.locations };
+    return { tree, locations: parser.locations, comments: parser.comments };
   };
 }
 
