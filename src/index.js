@@ -64,6 +64,12 @@ class ParserWithLocation extends GenericParser {
 
   skipSingleLineComment(offset) {
     // We're actually extending the *tokenizer*, here.
+
+    if (!this.includeComments) {
+      super.skipSingleLineComment(offset);
+      return;
+    }
+
     const start = {
       line: this.line + 1,
       column: this.index - this.lineStart,
@@ -86,6 +92,11 @@ class ParserWithLocation extends GenericParser {
   }
 
   skipMultiLineComment() {
+    if (!this.includeComments) {
+      super.skipMultiLineComment();
+      return;
+    }
+
     const start = {
       line: this.line + 1,
       column: this.index - this.lineStart,
@@ -126,9 +137,10 @@ function generateInterface(parsingFunctionName) {
 }
 
 function generateInterfaceWithLocation(parsingFunctionName) {
-  return function parse(code, { earlyErrors = true, bareReturns = false } = {}) {
+  return function parse(code, { earlyErrors = true, bareReturns = false, includeComments = false } = {}) {
     let parser = new ParserWithLocation(code);
     parser.bareReturns = bareReturns;
+    parser.includeComments = includeComments;
     let tree = parser[parsingFunctionName]();
 
     /*
